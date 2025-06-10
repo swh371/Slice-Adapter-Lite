@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-test_adapter.py  ·  Rad-FM + Adapter  推理脚本（可调解码策略 + ICL + 重采样防抄袭）
+test_adapter.py  ·  Rad-FM + Adapter  推理脚本
 
 用法示例见文末。
 """
@@ -81,24 +81,12 @@ def load_volume(slice_paths: list,
 
 
 def build_prompt(current, pad_tok, samples, num_shots):
-    """
-    构造最终的 prompt 文本：
-      - 随机抽取 num_shots 个示例
-      - 示例格式：
-            Question: ...
-            Answer: ...
-        最后拼接当前样本：
-            Question: ...<image>pad_tok</image>
-            Answer:
-    """
     prompt = ""
     if num_shots > 0 and len(samples) > 1:
-        # 排除自身，随机抽取
         others = [s for s in samples if s['sample_id'] != current['sample_id']]
         shots = random.sample(others, min(num_shots, len(others)))
         for e in shots:
             prompt += f"Question: {e['question_en']}\nAnswer: {e['answer_en']}\n\n"
-    # 当前样本
     prompt += f"Question: {current['question_en']}<image>{pad_tok}</image>\nAnswer:"
     return prompt
 
@@ -135,13 +123,11 @@ def main(args):
 
             # 1. 准备影像 volume
             vol = load_volume(jpgs, img_pad_toks, device)
-
-            # 2. 构造带 ICL 的 prompt
             text = build_prompt(s, img_pad_toks[0], samples, args.num_shots)
             enc = tok(text, max_length=2048, truncation=True, return_tensors='pt')
             lang_x = enc['input_ids'].to(device)
 
-            # 3. 自定义解码
+            # 2. 自定义解码
             model.embedding_layer.flag = 'Text'
             with torch.no_grad():
                 embeds, _ = model.embedding_layer(lang_x, vol)
@@ -157,11 +143,9 @@ def main(args):
                     length_penalty     = args.length_penalty,
                     early_stopping     = True,
                 )
-                # 首次生成
                 gen_ids = model.lang_model.generate(**gen_kwargs)
                 pred = tok.batch_decode(gen_ids, skip_special_tokens=True)[0].strip()
 
-                # 如果恰好和参考一致，则尝试重采样
                 ref = s['answer_en'].strip()
                 if pred == ref and args.max_regen_attempts > 0:
                     for attempt in range(args.max_regen_attempts):
@@ -202,11 +186,8 @@ if __name__ == "__main__":
     p.add_argument('--top_p',          type=float, default=0.95)
     p.add_argument('--temperature',    type=float, default=0.7)
     p.add_argument('--rep_penalty',    type=float, default=1.1)
-    # 新增：ICL 示例数 & 重采样尝试次数
     p.add_argument('--num_shots',          type=int,   default=0,
-                                 help="每次生成前随机加入多少示例做 ICL")
     p.add_argument('--max_regen_attempts', type=int,   default=3,
-                                 help="若生成与参考完全一致，最多重试多少次采样")
     args = p.parse_args()
 
     main(args)
