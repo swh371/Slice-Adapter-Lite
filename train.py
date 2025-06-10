@@ -12,11 +12,9 @@ from My_Trainer.trainer import Trainer
 from Dataset.multi_dataset_test_for_close import multi_dataset_close  # 如果你仍想用 close-test
 from Model.RadFM.multimodality_model import MultiLLaMAForCausalLM
 
-# --- 我们新增的 Dataset 和预处理工具 ---
 from Dataset.variance_slice_dataset import VarianceSliceVQADataset
 from torchvision import transforms
 
-# （你的分布式采样器和测评函数不变）
 from datasampler import My_DistributedBatchSampler
 # from datasets import load_metric
 
