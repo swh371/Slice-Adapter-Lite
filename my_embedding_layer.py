@@ -58,11 +58,8 @@ class MyEmbedding(nn.Module):
             nhead           = adapter_nhead,
             num_layers      = adapter_layers
         )
-
-        # 3. 将 adapter 输出映射到 embedding_dim
         self.fc_proj = nn.Linear(vis_dim, embedding_dim)
 
-        # —— 以下为原有 3D ViT + Perceiver（可留作对比，但权重冻结，不参与前向） —— #
 
         self.vision_encoder = ViT(
             image_size=512,
@@ -103,10 +100,6 @@ class MyEmbedding(nn.Module):
 
     def forward(self, text_input, vision_x, key_words_query=None):
         B = text_input.size(0)
-
-        # —— 如果是 Text 模式，就用 CLIP + Adapter —— #
-        # vision_x assumed shape [B, S, 3, 224, 224]
-        # (你需要保证 DataLoader 输出对应格式)
         if vision_x.dim() == 5:
             # 1) reshape → [B*S,3,224,224]
             B, S, C, H, W = vision_x.shape
@@ -131,9 +124,6 @@ class MyEmbedding(nn.Module):
 
         # Optionally compute keyword-matching loss as before...
         loss_matching = None
-        # (保留原有 keyword 部分…)
-
-        # ——— 最终拼接 text + vision embedding ——— #
         # text_input: [B, L]  → one-hot → matmul
         embedding_weight = torch.cat([self.weight, self.figure_token_weight], dim=0)
         embedding_weight = embedding_weight.unsqueeze(0).repeat(B, 1, 1)
@@ -143,10 +133,3 @@ class MyEmbedding(nn.Module):
         out_put = torch.matmul(text_oh, embedding_weight)
 
         return out_put, loss_matching
-
-
-# model = MyEmbedding(vision_encoder_path = '')
-# text_input = torch.randint(low=0, high=3210, size=(4,2048))
-# image_input = torch.randn((4,3,3,512,512,4))
-# key_words_query = [[],[],[],['consoliation']]
-# print(model(text_input, image_input, key_words_query))
