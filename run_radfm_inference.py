@@ -3,7 +3,7 @@
 """
 run_radfm_inference.py
 
-对 processed_samples/<sample_id>/*.jpg 组合 question_en，用 Rad-FM（MultiLLaMAForCausalLM）做推理，
+对 processed_samples/<sample_id>/*.jpg 组合 question_en，用 MultiLLaMAForCausalLM做推理，
 将 quiz_id, sample_id, question_en, answer_en, pred_text 全部输出到 CSV。
 """
 import os
